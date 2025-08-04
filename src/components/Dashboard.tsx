@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Filter, Eye, Calendar, Zap } from 'lucide-react';
+import { AlertTriangle, Filter, Eye, Calendar, Zap, LogOut, User } from 'lucide-react';
 import { ErrorLog, DashboardStats } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import ErrorDetailModal from './ErrorDetailModal';
 
 const Dashboard: React.FC = () => {
+  const { user, logout } = useAuth();
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalErrors: 0,
@@ -28,7 +30,6 @@ const Dashboard: React.FC = () => {
     try {
       console.log('Fetching error logs with filters:', filters);
       const params = new URLSearchParams();
-      params.append('userId', 'local-dev-user');
       params.append('showResolved', filters.showResolved.toString());
       
       // Only add filter params if they're not 'all' or empty
@@ -48,7 +49,11 @@ const Dashboard: React.FC = () => {
       const url = `http://localhost:3001/api/errors?${params.toString()}`;
       console.log('Fetching from URL:', url);
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -65,7 +70,11 @@ const Dashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/stats?userId=local-dev-user');
+      const response = await fetch('http://localhost:3001/api/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -79,7 +88,11 @@ const Dashboard: React.FC = () => {
 
   const fetchFilterOptions = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/filter-options?userId=local-dev-user');
+      const response = await fetch('http://localhost:3001/api/filter-options', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -139,7 +152,10 @@ const Dashboard: React.FC = () => {
     try {
       console.log('Retrying error:', errorId);
       const response = await fetch(`http://localhost:3001/api/retry-error/${errorId}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
+        }
       });
       
       if (!response.ok) {
@@ -165,7 +181,10 @@ const Dashboard: React.FC = () => {
     try {
       console.log('Resolving error:', errorId);
       const response = await fetch(`http://localhost:3001/api/resolve-error/${errorId}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
+        }
       });
       
       if (!response.ok) {
@@ -237,12 +256,26 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm text-gray-600">Catch automation errors before they break your business</p>
               </div>
             </div>
-            <button
-              onClick={testWebhook}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Test Webhook
-            </button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-700">{user?.email}</span>
+              </div>
+              <button
+                onClick={testWebhook}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Test Webhook
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

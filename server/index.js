@@ -2,7 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import ErrorLog from './models/ErrorLog.js';
+import User from './models/User.js';
+import authMiddleware from './middleware/auth.js';
 
 // Load environment variables
 dotenv.config();
@@ -268,6 +272,126 @@ async function sendSlackNotification(errorData) {
   }
 }
 
+// Authentication Routes
+
+// User signup
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Hash password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Create user
+    const user = new User({
+      email,
+      passwordHash
+    });
+
+    await user.save();
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('User signed up successfully:', user.email);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// User login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('User logged in successfully:', user.email);
+
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get current user (protected route)
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    res.json({
+      user: {
+        id: req.user._id,
+        email: req.user.email,
+        createdAt: req.user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Webhook receiver endpoint
 app.post('/api/errors', async (req, res) => {
   try {
@@ -323,11 +447,12 @@ app.post('/api/errors', async (req, res) => {
   }
 });
 
-// Get error logs for dashboard
-app.get('/api/errors', async (req, res) => {
+// Get error logs for dashboard (protected route)
+app.get('/api/errors', authMiddleware, async (req, res) => {
   try {
     console.log('GET /api/errors called with query:', req.query);
-    const { userId = 'local-dev-user', integration, errorType, startDate, endDate, showResolved = 'false' } = req.query;
+    const { integration, errorType, startDate, endDate, showResolved = 'false' } = req.query;
+    const userId = req.user._id.toString(); // Use authenticated user's ID
     console.log('MongoDB connection state:', mongoose.connection.readyState);
 
     if (mongoose.connection.readyState !== 1) {
@@ -335,7 +460,7 @@ app.get('/api/errors', async (req, res) => {
       const demoData = [
         {
           id: '1',
-          user_id: 'local-dev-user',
+          user_id: userId,
           timestamp: new Date().toISOString(),
           integration_name: 'Zapier',
           error_type: 'AUTH_EXPIRED',
@@ -348,7 +473,7 @@ app.get('/api/errors', async (req, res) => {
         },
         {
           id: '2',
-          user_id: 'local-dev-user',
+          user_id: userId,
           timestamp: new Date(Date.now() - 60000).toISOString(),
           integration_name: 'n8n',
           error_type: 'CONNECTION_FAILED',
@@ -360,7 +485,7 @@ app.get('/api/errors', async (req, res) => {
         },
         {
           id: '3',
-          user_id: 'local-dev-user',
+          user_id: userId,
           timestamp: new Date(Date.now() - 120000).toISOString(),
           integration_name: 'Make.com',
           error_type: 'RATE_LIMIT',
@@ -372,7 +497,7 @@ app.get('/api/errors', async (req, res) => {
         },
         {
           id: '4',
-          user_id: 'local-dev-user',
+          user_id: userId,
           timestamp: new Date(Date.now() - 180000).toISOString(),
           integration_name: 'Zapier',
           error_type: 'INVALID_DATA',
@@ -448,8 +573,8 @@ app.get('/api/errors', async (req, res) => {
   }
 });
 
-// Retry error endpoint
-app.post('/api/retry-error/:id', async (req, res) => {
+// Retry error endpoint (protected route)
+app.post('/api/retry-error/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     console.log('Retrying error with ID:', id);
@@ -530,8 +655,8 @@ app.post('/api/retry-error/:id', async (req, res) => {
   }
 });
 
-// Resolve error endpoint
-app.post('/api/resolve-error/:id', async (req, res) => {
+// Resolve error endpoint (protected route)
+app.post('/api/resolve-error/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     console.log('Resolving error with ID:', id);
@@ -571,8 +696,8 @@ app.post('/api/resolve-error/:id', async (req, res) => {
   }
 });
 
-// Standardized retry endpoint (alternative route)
-app.post('/api/errors/:id/retry', async (req, res) => {
+// Standardized retry endpoint (alternative route - protected)
+app.post('/api/errors/:id/retry', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     console.log('Retrying error with ID (standardized route):', id);
@@ -653,8 +778,8 @@ app.post('/api/errors/:id/retry', async (req, res) => {
   }
 });
 
-// Standardized resolve endpoint (alternative route)
-app.post('/api/errors/:id/resolve', async (req, res) => {
+// Standardized resolve endpoint (alternative route - protected)
+app.post('/api/errors/:id/resolve', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     console.log('Resolving error with ID (standardized route):', id);
@@ -694,10 +819,10 @@ app.post('/api/errors/:id/resolve', async (req, res) => {
   }
 });
 
-// Get dashboard statistics
-app.get('/api/stats', async (req, res) => {
+// Get dashboard statistics (protected route)
+app.get('/api/stats', authMiddleware, async (req, res) => {
   try {
-    const userId = req.query.userId || 'local-dev-user';
+    const userId = req.user._id.toString(); // Use authenticated user's ID
 
     if (mongoose.connection.readyState !== 1) {
       // Return demo stats when MongoDB is not available
@@ -743,10 +868,10 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Get available filter options
-app.get('/api/filter-options', async (req, res) => {
+// Get available filter options (protected route)
+app.get('/api/filter-options', authMiddleware, async (req, res) => {
   try {
-    const userId = req.query.userId || 'local-dev-user';
+    const userId = req.user._id.toString(); // Use authenticated user's ID
 
     if (mongoose.connection.readyState !== 1) {
       // Return demo options when MongoDB is not available
