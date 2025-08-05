@@ -22,8 +22,10 @@ interface ApiError {
   response?: {
     data?: {
       error?: string;
+      message?: string;
     };
   };
+  message?: string;
 }
 
 // Create context
@@ -121,8 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      const errorMessage = apiError.response?.data?.error || 'Login failed';
+      // Improved error handling with optional chaining
+      let errorMessage = 'Login failed';
+      
+      if (error && typeof error === 'object') {
+        const apiError = error as ApiError;
+        errorMessage = apiError.response?.data?.error || 
+                      apiError.response?.data?.message || 
+                      (error as Error).message || 
+                      'Login failed';
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       throw new Error(errorMessage);
     }
   };
@@ -137,8 +150,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      const errorMessage = apiError.response?.data?.error || 'Signup failed';
+      // Improved error handling with optional chaining
+      let errorMessage = 'Signup failed';
+      
+      if (error && typeof error === 'object') {
+        const apiError = error as ApiError;
+        errorMessage = apiError.response?.data?.error || 
+                      apiError.response?.data?.message || 
+                      apiError.message || 
+                      'Signup failed';
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       throw new Error(errorMessage);
     }
   };

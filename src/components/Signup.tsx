@@ -31,8 +31,33 @@ const Signup: React.FC = () => {
     try {
       await signup(email, password);
       // Navigation will be handled by the App component based on auth state
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed');
+    } catch (err: unknown) {
+      // Extract readable error message with proper error handling
+      let errorMessage = 'Signup failed';
+      
+      if (err && typeof err === 'object') {
+        const errorObj = err as { 
+          response?: { 
+            data?: { 
+              error?: string; 
+              message?: string; 
+            }; 
+          }; 
+          message?: string; 
+        };
+        
+        if (errorObj.response?.data?.error) {
+          errorMessage = errorObj.response.data.error;
+        } else if (errorObj.response?.data?.message) {
+          errorMessage = errorObj.response.data.message;
+        } else if (errorObj.message) {
+          errorMessage = errorObj.message;
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -60,7 +85,7 @@ const Signup: React.FC = () => {
               <div className="flex">
                 <AlertCircle className="w-5 h-5 text-red-400" />
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-red-500">{error}</p>
                 </div>
               </div>
             </div>
