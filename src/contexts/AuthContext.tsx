@@ -33,7 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Configure axios defaults
 const API_BASE_URL = import.meta.env.PROD 
-  ? window.location.origin  // Use same domain in production
+  ? 'https://errorcue.onrender.com'  // Use Render backend in production
   : 'http://localhost:3001'; // Use localhost in development
 
 console.log('Auth Context - Environment:', {

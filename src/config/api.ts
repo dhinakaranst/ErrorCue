@@ -5,8 +5,8 @@ const getApiUrl = () => {
     return 'http://localhost:3001';
   }
   
-  // In production, use the same domain (no port needed for Render)
-  return window.location.origin;
+  // In production, use the Render backend API
+  return 'https://errorcue.onrender.com';
 };
 
 export const API_URL = getApiUrl();

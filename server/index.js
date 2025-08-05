@@ -39,7 +39,12 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://errorcue.onrender.com'] 
+    ? [
+        'https://errorcue.onrender.com',           // Keep Render for backend testing
+        'https://errorcue.vercel.app',             // Your Vercel domain
+        'https://errorcue-git-main-your-username.vercel.app', // Vercel preview URLs
+        /https:\/\/errorcue-.*\.vercel\.app$/      // All Vercel preview deployments
+      ]
     : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true
 }));
@@ -54,10 +59,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from the React app build directory in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-}
+// Note: Static file serving removed - frontend is hosted on Vercel
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/errorcue';
@@ -1079,12 +1081,7 @@ app.get('/debug/check-db', async (req, res) => {
   }
 });
 
-// Catch-all handler: send back React's index.html file in production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  });
-}
+// Backend API only - no catch-all route needed (frontend hosted on Vercel)
 
 app.listen(PORT, () => {
   console.log(`ErrorCue server running on port ${PORT}`);
