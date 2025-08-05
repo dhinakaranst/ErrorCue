@@ -33,6 +33,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_BASE_URL = import.meta.env.PROD 
   ? window.location.origin  // Use same domain in production
   : 'http://localhost:3001'; // Use localhost in development
+
+console.log('Auth Context - Environment:', {
+  PROD: import.meta.env.PROD,
+  DEV: import.meta.env.DEV,
+  MODE: import.meta.env.MODE,
+  API_BASE_URL: API_BASE_URL,
+  origin: window.location.origin
+});
+
 axios.defaults.baseURL = API_BASE_URL;
 
 // Auth Provider Component
