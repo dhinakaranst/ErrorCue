@@ -29,6 +29,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`, {
+    headers: Object.keys(req.headers),
+    body: req.method === 'POST' ? req.body : 'N/A'
+  });
+  next();
+});
+
 // Serve static files from the React app build directory in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
@@ -289,6 +298,7 @@ async function sendSlackNotification(errorData) {
 
 // User signup
 app.post('/api/auth/signup', async (req, res) => {
+  console.log('=== SIGNUP ROUTE HIT ===', req.body);
   try {
     const { email, password } = req.body;
 
@@ -345,6 +355,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
 // User login
 app.post('/api/auth/login', async (req, res) => {
+  console.log('=== LOGIN ROUTE HIT ===', req.body);
   try {
     const { email, password } = req.body;
 
