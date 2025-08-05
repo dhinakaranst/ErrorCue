@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Filter, Eye, Calendar, Zap, LogOut, User } from 'lucide-react';
 import { ErrorLog, DashboardStats } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { API_URL } from '../config/api';
 import ErrorDetailModal from './ErrorDetailModal';
 
 const Dashboard: React.FC = () => {
@@ -46,7 +47,7 @@ const Dashboard: React.FC = () => {
         params.append('endDate', filters.endDate);
       }
 
-      const url = `http://localhost:3001/api/errors?${params.toString()}`;
+      const url = `${API_URL}/api/errors?${params.toString()}`;
       console.log('Fetching from URL:', url);
       
       const response = await fetch(url, {
@@ -70,7 +71,7 @@ const Dashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/stats', {
+      const response = await fetch(`${API_URL}/api/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
         }
@@ -88,7 +89,7 @@ const Dashboard: React.FC = () => {
 
   const fetchFilterOptions = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/filter-options', {
+      const response = await fetch(`${API_URL}/api/filter-options`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
         }
@@ -128,7 +129,7 @@ const Dashboard: React.FC = () => {
   const testWebhook = async () => {
     try {
       console.log('Testing webhook...');
-      const response = await fetch('http://localhost:3001/debug/test-error');
+      const response = await fetch(`${API_URL}/debug/test-error`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -151,7 +152,7 @@ const Dashboard: React.FC = () => {
   const retryError = async (errorId: string) => {
     try {
       console.log('Retrying error:', errorId);
-      const response = await fetch(`http://localhost:3001/api/retry-error/${errorId}`, {
+      const response = await fetch(`${API_URL}/api/retry-error/${errorId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`
@@ -180,7 +181,7 @@ const Dashboard: React.FC = () => {
   const resolveError = async (errorId: string) => {
     try {
       console.log('Resolving error:', errorId);
-      const response = await fetch(`http://localhost:3001/api/resolve-error/${errorId}`, {
+      const response = await fetch(`${API_URL}/api/resolve-error/${errorId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('errorCueToken')}`

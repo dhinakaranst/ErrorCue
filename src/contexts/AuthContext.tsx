@@ -30,7 +30,9 @@ interface ApiError {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Configure axios defaults
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.PROD 
+  ? window.location.origin  // Use same domain in production
+  : 'http://localhost:3001'; // Use localhost in development
 axios.defaults.baseURL = API_BASE_URL;
 
 // Auth Provider Component
